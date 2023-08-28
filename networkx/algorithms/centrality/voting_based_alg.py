@@ -256,6 +256,87 @@ def borda_voting(G):
 
 @nx.utils.not_implemented_for("directed")
 @nx.utils.not_implemented_for("multigraph")
+def stv_voting(G, number_of_nodes):
+    """Select a set of influential nodes using Single Transferable Vote (STV).
+
+    
+
+    Notes
+    -----
+    STV centrality only works with undirected networks (no multigraph).
+    Weights are ignored.
+
+    Parameters
+    ----------
+    G : graph
+        A NetworkX graph.
+
+    number_of_nodes : integer
+        The number of nodes to select.
+
+    Returns
+    -------
+    stv_voting : set
+        The selected nodes.
+
+    See Also
+    --------
+    copeland_voting, sav_voting, borda_voting
+
+    Examples
+    --------
+    
+
+    References
+    ----------
+    .. [2] Laussmann, C. (2023).
+        "Network Centrality Through Voting Rules"
+        In: COMSOC Methods in Real-World Applications (Dissertation).
+        Publisher: Universitaets- und Landesbibliothek der Heinrich-Heine-Universitaet Duesseldorf
+        Pages 27-45.
+    """
+
+    shortest_paths_len = {}
+    for start, distances in nx.shortest_path_length(G, source=None, target=None):
+        shortest_paths_len[start] = distances
+
+    selected_nodes = {}
+    voting_abilities = {v: 1 for v in G.nodes}
+    candidates_left = set(G.nodes)
+    quota = len(candidates_left) // (number_of_nodes + 1)
+
+    def plurality_winner_loser():
+        plur_scores = {c: 0 for c in candidates_left}
+        for v in G.nodes:
+            best_candidate = min(candidates_left, key=shortest_path_length[v].get)
+            for c in candidates_left:
+                if shortest_path_length[v][c] == shortest_path_length[v][best_candidate]:
+                    plur_scores[c] += voting_abilities[v]
+        best = max(candidates_left, key=plur_scores.get)
+        worst = min(candidates_left, key=plur_scores.get)
+        return (best, plur_scores[best], worst)
+    
+    def reduce_voting_ability(elected_candidate, score_of_elected):
+        exceed = score_of_elected - quota
+        avg_voting_ability_afterwards = exceed / score_of_elected
+        for v in G.nodes:
+            votes_for = min(candidates_left, key=v.position_of)
+            if votes_for == elected_candidate:
+                voting_abilities[v] = voting_abilities[v] * avg_voting_ability_afterwards
+    
+    while len(selected_nodes) < number_of_nodes:
+        winner, win_score, loser = plurality_winner_loser()
+        if win_score >= quota:
+            reduce_voting_ability(winner, win_score)
+            selected_nodes.add(winner)
+            candidates_left.remove(winner)
+        else:
+            candidates_left.remove(loser)
+    return selected_nodes
+
+
+@nx.utils.not_implemented_for("directed")
+@nx.utils.not_implemented_for("multigraph")
 def spav_voting(G, number_of_nodes=None, voting_ability_fn=None):
     """Select a set of influential nodes using Sequential Proportional Approval Voting (SPAV).
 
