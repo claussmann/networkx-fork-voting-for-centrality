@@ -319,18 +319,18 @@ def stv_voting(G, number_of_nodes):
     for start, distances in nx.shortest_path_length(G, source=None, target=None):
         shortest_path_len[start] = distances
 
-    selected_nodes = {}
+    selected_nodes = set()
     voting_abilities = {v: 1 for v in G.nodes}
     candidates_left = set(G.nodes)
     # This is not the Droop quota, since we implicitly assume nodes to prefer themselves
     # over the others, although they do not formally vote for themselves. Thus our quota
     # is lower by one.
-    quota = len(candidates_left) // (number_of_nodes + 1)
+    quota = len(G.nodes) // (number_of_nodes + 1)
 
     def plurality_winner_loser():
         plur_scores = {c: 0 for c in candidates_left}
         for v in G.nodes:
-            best_candidate = min(candidates_left, key=shortest_path_len[v].get)
+            best_candidate = min(candidates_left.difference(v), key=shortest_path_len[v].get)
             for c in candidates_left:
                 if shortest_path_len[v][c] == shortest_path_len[v][best_candidate]:
                     plur_scores[c] += voting_abilities[v]
@@ -342,8 +342,8 @@ def stv_voting(G, number_of_nodes):
         exceed = score_of_elected - quota
         avg_voting_ability_afterwards = exceed / score_of_elected
         for v in G.nodes:
-            votes_for = min(candidates_left, key=v.position_of)
-            if votes_for == elected_candidate:
+            best_candidate = min(candidates_left.difference(v), key=shortest_path_len[v].get)
+            if shortest_path_len[v][best_candidate] == shortest_path_len[v][elected_candidate]:
                 voting_abilities[v] = voting_abilities[v] * avg_voting_ability_afterwards
 
     while len(selected_nodes) < number_of_nodes:
