@@ -304,7 +304,9 @@ def stv_voting(G, number_of_nodes):
 
     Examples
     --------
-    
+    >>> G = nx.Graph([(1, 2), (2, 3), (4, 3), (3, 5), (5, 6), (6, 7), (6, 8), (8, 9), (9, 10), (10, 11), (10, 12)])
+    >>> nx.stv_voting(G, 2)
+    {9, 3}
 
     References
     ----------
